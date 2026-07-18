@@ -3,7 +3,6 @@
 namespace Drewdan\SentinelClient;
 
 use DateTimeInterface;
-use Illuminate\Support\Facades\Http;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
@@ -24,49 +23,65 @@ class SentinelLogHandler extends AbstractProcessingHandler {
 	 * ship itself and fails again.
 	 */
 	protected function write(LogRecord $record): void {
-		$url = config('sentinel-client.ingest_url');
+		$exception = $record->context['exception'] ?? null;
 
-		if (! $url) {
-			return;
+		IngestClient::send(
+			$exception instanceof \Throwable
+				? $this->buildExceptionPayload($record, $exception)
+				: $this->buildLogPayload($record),
+		);
+	}
+
+	private function buildLogPayload(LogRecord $record): array {
+		return [
+			'type' => 'log',
+			'data' => [
+				'message' => $record->message,
+				'level' => $record->level->toPsrLogLevel(),
+				'context' => $this->buildContext($record) ?: null,
+				'logged_at' => $record->datetime->format(DateTimeInterface::ATOM),
+			],
+		];
+	}
+
+	private function buildExceptionPayload(LogRecord $record, \Throwable $exception): array {
+		$data = ExceptionSerializer::toArray($exception);
+
+		if (config('sentinel-client.capture_code_snippets', true)) {
+			$data['snippet'] = SourceSnippetExtractor::around(
+				$data['file'],
+				$data['line'],
+				(int) config('sentinel-client.code_snippet_lines', 5),
+			);
 		}
 
-		if (! config('sentinel-client.enabled', true)) {
-			return;
-		}
+		$context = $this->buildContext($record, ['exception']);
 
-		try {
-			Http::timeout((int) config('sentinel-client.timeout', 2))
-				->asJson()
-				->post(
-					$url,
-					[
-						'type' => 'log',
-						'data' => [
-							'message' => $record->message,
-							'level' => $record->level->toPsrLogLevel(),
-							'context' => $this->buildContext($record) ?: null,
-							'logged_at' => $record->datetime->format(DateTimeInterface::ATOM),
-						],
-					],
-				);
-		} catch (\Throwable $e) {
-			// Never let a failed shipping attempt cascade into more errors.
-			unset($e);
-		}
+		return [
+			'type' => 'exception',
+			'data' => [
+				'level' => $record->level->toPsrLogLevel(),
+				'class' => $data['class'],
+				'message' => $data['message'],
+				'code' => $data['code'],
+				'file' => $data['file'],
+				'line' => $data['line'],
+				'trace' => $data['trace'],
+				'previous' => $data['previous'] ?? null,
+				'snippet' => $data['snippet'] ?? null,
+				'context' => $context ?: null,
+				'occurred_at' => $record->datetime->format(DateTimeInterface::ATOM),
+			],
+		];
 	}
 
 	/**
 	 * Merges the record's own context with whatever SentinelContextProcessor
-	 * added to `extra` (request/user info), and makes sure a raw exception
-	 * object — which serializes to nothing useful on its own — is expanded
-	 * into a plain array first.
+	 * added to `extra` (request/user info), excluding any keys already
+	 * captured elsewhere in the payload (e.g. `exception`, expanded separately).
 	 */
-	private function buildContext(LogRecord $record): array {
-		$context = $record->context;
-
-		if (isset($context['exception']) && $context['exception'] instanceof \Throwable) {
-			$context['exception'] = ExceptionSerializer::toArray($context['exception']);
-		}
+	private function buildContext(LogRecord $record, array $exclude = []): array {
+		$context = array_diff_key($record->context, array_flip($exclude));
 
 		return [...$record->extra, ...$context];
 	}

@@ -65,9 +65,83 @@ SENTINEL_MIN_LEVEL=warning
 
 Nothing extra to wire up — Laravel already logs every reported exception to your default log
 channel, so as soon as `sentinel` is part of your `LOG_STACK`, exceptions ship automatically.
-The raw exception object doesn't serialize to anything useful on its own though, so this package
-expands it into a proper structured payload (`class`, `message`, `code`, `file`, `line`, `trace`,
-and the full `previous` chain if the exception wraps another).
+
+A record with a `Throwable` in its context (which is how Laravel logs exceptions) is routed to
+Sentinel's dedicated exceptions ingest path rather than the generic logs path, as a structured
+payload: `class`, `message`, `code`, `file`, `line`, `trace`, and the full `previous` chain if the
+exception wraps another. Any other context you passed alongside the exception (plus the automatic
+request/user context below) ships too, just without the exception itself duplicated inside it.
+
+### Code snippets
+
+When the thrown-from file is readable on disk, a snippet of source around the throw line ships
+alongside the trace, so Sentinel can show the line that failed with its surrounding context:
+
+```dotenv
+# Turn snippet capture off entirely. Defaults to true.
+SENTINEL_CAPTURE_CODE_SNIPPETS=true
+
+# How many lines of context to include above and below the throw line.
+SENTINEL_CODE_SNIPPET_LINES=5
+```
+
+Reading the file can fail silently (eval'd code, vendor files stripped in production, permission
+issues) — when it does, `snippet` is simply omitted rather than blocking the exception from shipping.
+
+## Queued jobs
+
+Once the package's service provider is registered, every queued job execution is watched via
+Laravel's `JobProcessing`/`JobProcessed`/`JobFailed` events — nothing to add to your jobs
+themselves. What gets shipped is controlled by `SENTINEL_TRACK_JOBS`:
+
+```dotenv
+# "failed": only ship jobs that threw an exception (default, low noise).
+# "all": ship every job execution, successful or not, with its duration.
+# "none": don't track job executions at all.
+SENTINEL_TRACK_JOBS=failed
+```
+
+Failed jobs ship the same structured exception payload (with code snippet, if enabled) as a
+reported exception. Successful jobs (only shipped when `SENTINEL_TRACK_JOBS=all`) ship just
+`class`, `connection`, `queue`, and `duration_ms`.
+
+Like everything else in this package, job tracking never throws — a failure while building or
+sending the payload is swallowed, never allowed to break job processing.
+
+## Heartbeats & health checks
+
+This package registers a `sentinel:heartbeat` command that ships a heartbeat to Sentinel,
+proving the app is alive even when nothing else is logging. Schedule it yourself:
+
+```php
+// routes/console.php
+Schedule::command('sentinel:heartbeat')->everyFiveMinutes();
+```
+
+By default it also collects CPU load, memory usage, and storage usage (each best-effort — a
+metric that can't be read on your platform/host is simply omitted, never an error):
+
+```dotenv
+# Turn heartbeat metric collection off entirely (the heartbeat itself still ships). Defaults to true.
+SENTINEL_CAPTURE_METRICS=true
+```
+
+Works on Linux (Sentinel's primary target — reads `/proc/meminfo` directly, no shelling out),
+macOS (via `vm_stat`/`sysctl`), and Windows (via `wmic`). On hosts where the underlying
+command/file isn't available — containers without `/proc`, `exec()` disabled, `wmic` missing —
+the affected metric is simply left out of the heartbeat rather than failing it.
+
+As a fallback for when heartbeats stop arriving (the app crashed, the scheduler died, etc.),
+this package also registers a lightweight, unauthenticated health-check route that Sentinel can
+poll directly. Point your environment's "Health check URL" (in Sentinel's environment settings)
+at it:
+
+```dotenv
+# Disable if you'd rather point Sentinel at your own health route (e.g. Laravel's built-in /up).
+SENTINEL_HEALTH_ENDPOINT_ENABLED=true
+
+SENTINEL_HEALTH_ENDPOINT_PATH=/_sentinel/health
+```
 
 ## Automatic context
 

@@ -55,4 +55,77 @@ return [
 
 	'timeout' => env('SENTINEL_TIMEOUT', 2),
 
+	/*
+	|--------------------------------------------------------------------------
+	| Code Snippet Capture
+	|--------------------------------------------------------------------------
+	|
+	| When an exception is shipped, capture a few lines of source code around
+	| the line it was thrown on so Sentinel can display it alongside the
+	| stack trace. Reads the file straight off disk, so this only works when
+	| the source is actually present on the machine running the app.
+	|
+	*/
+
+	'capture_code_snippets' => env('SENTINEL_CAPTURE_CODE_SNIPPETS', true),
+
+	/*
+	|--------------------------------------------------------------------------
+	| Code Snippet Lines
+	|--------------------------------------------------------------------------
+	|
+	| How many lines of context to include above and below the throw line.
+	|
+	*/
+
+	'code_snippet_lines' => env('SENTINEL_CODE_SNIPPET_LINES', 5),
+
+	/*
+	|--------------------------------------------------------------------------
+	| Job Tracking
+	|--------------------------------------------------------------------------
+	|
+	| Which queued job executions to ship to Sentinel:
+	|
+	|   - "failed": only ship jobs that threw an exception (default, low noise).
+	|   - "all": ship every job execution, successful or not, with its duration.
+	|   - "none": don't track job executions at all.
+	|
+	*/
+
+	'track_jobs' => env('SENTINEL_TRACK_JOBS', 'failed'),
+
+	/*
+	|--------------------------------------------------------------------------
+	| Heartbeat
+	|--------------------------------------------------------------------------
+	|
+	| Whether the `sentinel:heartbeat` command ships a heartbeat at all, how
+	| often it's scheduled, and whether it includes CPU/memory/storage
+	| metrics (each collected best-effort — see SystemMetricsCollector).
+	|
+	*/
+
+	'heartbeat_enabled' => env('SENTINEL_HEARTBEAT_ENABLED', true),
+
+	'heartbeat_interval_minutes' => env('SENTINEL_HEARTBEAT_INTERVAL_MINUTES', 5),
+
+	'capture_metrics' => env('SENTINEL_CAPTURE_METRICS', true),
+
+	/*
+	|--------------------------------------------------------------------------
+	| Health Endpoint
+	|--------------------------------------------------------------------------
+	|
+	| A lightweight, unauthenticated route this package registers so Sentinel
+	| can actively poll your app when its own heartbeats stop arriving.
+	| Disable this if you'd rather point Sentinel at your own health route
+	| (e.g. Laravel's built-in `/up`).
+	|
+	*/
+
+	'health_endpoint_enabled' => env('SENTINEL_HEALTH_ENDPOINT_ENABLED', true),
+
+	'health_endpoint_path' => env('SENTINEL_HEALTH_ENDPOINT_PATH', '/_sentinel/health'),
+
 ];

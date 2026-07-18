@@ -86,7 +86,7 @@ class SentinelLogHandlerTest extends TestCase {
 		$this->assertTrue(true);
 	}
 
-	public function testItSerializesExceptionInTheContextIntoPlainArray(): void {
+	public function testItDispatchesRecordsWithThrowableAsAnExceptionPayload(): void {
 		config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
 		Http::fake();
 
@@ -95,16 +95,62 @@ class SentinelLogHandlerTest extends TestCase {
 		Log::channel('sentinel')->error($exception->getMessage(), ['exception' => $exception]);
 
 		Http::assertSent(
-			function ($request) use ($exception) {
-				$sentException = $request['data']['context']['exception'] ?? null;
+			fn ($request) => $request['type'] === 'exception'
+				&& $request['data']['class'] === \RuntimeException::class
+				&& $request['data']['message'] === 'Something exploded'
+				&& $request['data']['level'] === 'error'
+				&& $request['data']['line'] === $exception->getLine()
+				&& is_array($request['data']['trace']),
+		);
+	}
 
-				return is_array($sentException)
-				&& $sentException['class'] === \RuntimeException::class
-				&& $sentException['message'] === 'Something exploded'
-				&& $sentException['line'] === $exception->getLine()
-				&& is_array($sentException['trace']);
+	public function testItDoesNotNestTheExceptionUnderContextOnTheExceptionPayload(): void {
+		config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
+		Http::fake();
+
+		$exception = new \RuntimeException('Something exploded');
+
+		Log::channel('sentinel')->error($exception->getMessage(), ['exception' => $exception, 'order_id' => 42]);
+
+		Http::assertSent(
+			fn ($request) => ! isset($request['data']['context']['exception'])
+				&& $request['data']['context']['order_id'] === 42,
+		);
+	}
+
+	public function testItCapturesSourceSnippetForExceptionsByDefault(): void {
+		config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
+		Http::fake();
+
+		$exception = new \RuntimeException('Something exploded');
+
+		Log::channel('sentinel')->error($exception->getMessage(), ['exception' => $exception]);
+
+		Http::assertSent(
+			function ($request) {
+				$snippet = $request['data']['snippet'] ?? null;
+
+				return is_array($snippet)
+					&& count($snippet) > 0
+					&& collect($snippet)->contains(fn ($row) => $row['is_target'] === true);
 			},
 		);
+	}
+
+	public function testItSkipsSourceSnippetCaptureWhenDisabled(): void {
+		config(
+			[
+				'sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest',
+				'sentinel-client.capture_code_snippets' => false,
+			],
+		);
+		Http::fake();
+
+		$exception = new \RuntimeException('Something exploded');
+
+		Log::channel('sentinel')->error($exception->getMessage(), ['exception' => $exception]);
+
+		Http::assertSent(fn ($request) => $request['data']['snippet'] === null);
 	}
 
 }
