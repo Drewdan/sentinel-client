@@ -61,9 +61,46 @@ SENTINEL_MIN_LEVEL=warning
 - **Below your configured minimum level?** Monolog filters it out before the handler is even
   invoked, so there's no overhead for levels you don't care about.
 
+## Exceptions
+
+Nothing extra to wire up — Laravel already logs every reported exception to your default log
+channel, so as soon as `sentinel` is part of your `LOG_STACK`, exceptions ship automatically.
+The raw exception object doesn't serialize to anything useful on its own though, so this package
+expands it into a proper structured payload (`class`, `message`, `code`, `file`, `line`, `trace`,
+and the full `previous` chain if the exception wraps another).
+
+## Automatic context
+
+Every record sent to Sentinel is enriched with request and user context when available, merged
+into `context` alongside whatever you passed explicitly (your own keys win on collision):
+
+```json
+{
+    "request": {
+        "ip": "203.0.113.5",
+        "url": "https://app.example.com/some/path",
+        "method": "POST",
+        "user_agent": "Mozilla/5.0 ..."
+    },
+    "user": {
+        "id": 42,
+        "email": "person@example.com"
+    }
+}
+```
+
+- Request context is only added when a request is actually bound in the container (i.e. an
+  HTTP request, not a console command or queue job).
+- User context is only added when there's an authenticated user on the default guard, and
+  includes `id` plus `email` if the user model has one.
+- Enrichment never throws — a failure here is swallowed the same way a failed HTTP send is,
+  so it can never break your app's logging.
+
 ## Testing
 
 ```bash
 composer install
-vendor/bin/phpunit
+composer test
+composer cs      # check code style
+composer cs:fix  # auto-fix code style
 ```

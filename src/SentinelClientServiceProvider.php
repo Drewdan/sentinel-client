@@ -6,21 +6,30 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Monolog\Logger;
 
-class SentinelClientServiceProvider extends ServiceProvider
-{
-    public function register(): void
-    {
-        $this->mergeConfigFrom(__DIR__.'/../config/sentinel-client.php', 'sentinel-client');
-    }
+class SentinelClientServiceProvider extends ServiceProvider {
 
-    public function boot(): void
-    {
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__.'/../config/sentinel-client.php' => config_path('sentinel-client.php'),
-            ], 'sentinel-client-config');
-        }
+	public function register(): void {
+		$this->mergeConfigFrom(__DIR__ . '/../config/sentinel-client.php', 'sentinel-client');
+	}
 
-        Log::extend('sentinel', fn () => new Logger('sentinel', [new SentinelLogHandler()]));
-    }
+	public function boot(): void {
+		if ($this->app->runningInConsole()) {
+			$this->publishes(
+				[
+					__DIR__ . '/../config/sentinel-client.php' => config_path('sentinel-client.php'),
+				],
+				'sentinel-client-config',
+			);
+		}
+
+		Log::extend(
+			'sentinel',
+			fn () => new Logger(
+				'sentinel',
+				[new SentinelLogHandler],
+				[new SentinelContextProcessor],
+			),
+		);
+	}
+
 }

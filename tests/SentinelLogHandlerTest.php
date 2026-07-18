@@ -5,82 +5,106 @@ namespace Drewdan\SentinelClient\Tests;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class SentinelLogHandlerTest extends TestCase
-{
-    public function testItSendsALogToTheConfiguredIngestUrl(): void
-    {
-        config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
-        Http::fake();
+class SentinelLogHandlerTest extends TestCase {
 
-        Log::channel('sentinel')->info('Hello from the client', ['foo' => 'bar']);
+	public function testItSendsLogToTheConfiguredIngestUrl(): void {
+		config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
+		Http::fake();
 
-        Http::assertSent(function ($request) {
-            return $request->url() === 'https://sentinel.test/project/abc/environment/def/ingest'
-                && $request['type'] === 'log'
-                && $request['data']['message'] === 'Hello from the client'
-                && $request['data']['level'] === 'info'
-                && $request['data']['context'] === ['foo' => 'bar'];
-        });
-    }
+		Log::channel('sentinel')->info('Hello from the client', ['foo' => 'bar']);
 
-    public function testItDoesNothingWhenTheIngestUrlIsNotConfigured(): void
-    {
-        config(['sentinel-client.ingest_url' => null]);
-        Http::fake();
+		Http::assertSent(
+			fn ($request) => $request->url() === 'https://sentinel.test/project/abc/environment/def/ingest'
+				&& $request['type'] === 'log'
+				&& $request['data']['message'] === 'Hello from the client'
+				&& $request['data']['level'] === 'info'
+				&& $request['data']['context']['foo'] === 'bar',
+		);
+	}
 
-        Log::channel('sentinel')->info('This should go nowhere');
+	public function testItDoesNothingWhenTheIngestUrlIsNotConfigured(): void {
+		config(['sentinel-client.ingest_url' => null]);
+		Http::fake();
 
-        Http::assertNothingSent();
-    }
+		Log::channel('sentinel')->info('This should go nowhere');
 
-    public function testItDoesNothingWhenDisabled(): void
-    {
-        config([
-            'sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest',
-            'sentinel-client.enabled' => false,
-        ]);
-        Http::fake();
+		Http::assertNothingSent();
+	}
 
-        Log::channel('sentinel')->info('This should also go nowhere');
+	public function testItDoesNothingWhenDisabled(): void {
+		config(
+			[
+				'sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest',
+				'sentinel-client.enabled' => false,
+			],
+		);
+		Http::fake();
 
-        Http::assertNothingSent();
-    }
+		Log::channel('sentinel')->info('This should also go nowhere');
 
-    public function testItDoesNotSendRecordsBelowTheConfiguredMinimumLevel(): void
-    {
-        config([
-            'sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest',
-            'sentinel-client.min_level' => 'error',
-        ]);
-        Http::fake();
+		Http::assertNothingSent();
+	}
 
-        Log::channel('sentinel')->info('Below threshold, should not send');
+	public function testItDoesNotSendRecordsBelowTheConfiguredMinimumLevel(): void {
+		config(
+			[
+				'sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest',
+				'sentinel-client.min_level' => 'error',
+			],
+		);
+		Http::fake();
 
-        Http::assertNothingSent();
-    }
+		Log::channel('sentinel')->info('Below threshold, should not send');
 
-    public function testItSendsRecordsAtOrAboveTheConfiguredMinimumLevel(): void
-    {
-        config([
-            'sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest',
-            'sentinel-client.min_level' => 'error',
-        ]);
-        Http::fake();
+		Http::assertNothingSent();
+	}
 
-        Log::channel('sentinel')->error('At threshold, should send');
+	public function testItSendsRecordsAtOrAboveTheConfiguredMinimumLevel(): void {
+		config(
+			[
+				'sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest',
+				'sentinel-client.min_level' => 'error',
+			],
+		);
+		Http::fake();
 
-        Http::assertSentCount(1);
-    }
+		Log::channel('sentinel')->error('At threshold, should send');
 
-    public function testItSwallowsExceptionsFromTheHttpClientWithoutThrowing(): void
-    {
-        config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
-        Http::fake(function () {
-            throw new \RuntimeException('Connection refused');
-        });
+		Http::assertSentCount(1);
+	}
 
-        Log::channel('sentinel')->error('This should not blow up the app');
+	public function testItSwallowsExceptionsFromTheHttpClientWithoutThrowing(): void {
+		config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
+		Http::fake(
+			function () {
+				throw new \RuntimeException('Connection refused');
+			},
+		);
 
-        $this->assertTrue(true);
-    }
+		Log::channel('sentinel')->error('This should not blow up the app');
+
+		$this->assertTrue(true);
+	}
+
+	public function testItSerializesExceptionInTheContextIntoPlainArray(): void {
+		config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
+		Http::fake();
+
+		$exception = new \RuntimeException('Something exploded');
+
+		Log::channel('sentinel')->error($exception->getMessage(), ['exception' => $exception]);
+
+		Http::assertSent(
+			function ($request) use ($exception) {
+				$sentException = $request['data']['context']['exception'] ?? null;
+
+				return is_array($sentException)
+				&& $sentException['class'] === \RuntimeException::class
+				&& $sentException['message'] === 'Something exploded'
+				&& $sentException['line'] === $exception->getLine()
+				&& is_array($sentException['trace']);
+			},
+		);
+	}
+
 }

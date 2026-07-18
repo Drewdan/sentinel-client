@@ -4,43 +4,40 @@ namespace Drewdan\SentinelClient\Tests;
 
 use PHPUnit\Framework\TestCase;
 
-class ConfigTest extends TestCase
-{
-    protected function tearDown(): void
-    {
-        putenv('SENTINEL_MIN_LEVEL');
-        putenv('LOG_LEVEL');
-        unset($_ENV['SENTINEL_MIN_LEVEL'], $_ENV['LOG_LEVEL']);
+class ConfigTest extends TestCase {
 
-        parent::tearDown();
-    }
+	protected function tearDown(): void {
+		putenv('SENTINEL_MIN_LEVEL');
+		putenv('LOG_LEVEL');
+		unset($_ENV['SENTINEL_MIN_LEVEL'], $_ENV['LOG_LEVEL']);
 
-    public function testMinLevelFallsBackToLogLevelWhenNotSetExplicitly(): void
-    {
-        putenv('LOG_LEVEL=warning');
-        $_ENV['LOG_LEVEL'] = 'warning';
+		parent::tearDown();
+	}
 
-        $config = require __DIR__.'/../config/sentinel-client.php';
+	public function testMinLevelFallsBackToLogLevelWhenNotSetExplicitly(): void {
+		putenv('LOG_LEVEL=warning');
+		$_ENV['LOG_LEVEL'] = 'warning';
 
-        $this->assertSame('warning', $config['min_level']);
-    }
+		$config = require __DIR__ . '/../config/sentinel-client.php';
 
-    public function testMinLevelPrefersItsOwnEnvVarOverLogLevel(): void
-    {
-        putenv('LOG_LEVEL=warning');
-        $_ENV['LOG_LEVEL'] = 'warning';
-        putenv('SENTINEL_MIN_LEVEL=error');
-        $_ENV['SENTINEL_MIN_LEVEL'] = 'error';
+		$this->assertSame('warning', $config['min_level']);
+	}
 
-        $config = require __DIR__.'/../config/sentinel-client.php';
+	public function testMinLevelPrefersItsOwnEnvVarOverLogLevel(): void {
+		putenv('LOG_LEVEL=warning');
+		$_ENV['LOG_LEVEL'] = 'warning';
+		putenv('SENTINEL_MIN_LEVEL=error');
+		$_ENV['SENTINEL_MIN_LEVEL'] = 'error';
 
-        $this->assertSame('error', $config['min_level']);
-    }
+		$config = require __DIR__ . '/../config/sentinel-client.php';
 
-    public function testMinLevelDefaultsToDebugWhenNeitherIsSet(): void
-    {
-        $config = require __DIR__.'/../config/sentinel-client.php';
+		$this->assertSame('error', $config['min_level']);
+	}
 
-        $this->assertSame('debug', $config['min_level']);
-    }
+	public function testMinLevelDefaultsToDebugWhenNeitherIsSet(): void {
+		$config = require __DIR__ . '/../config/sentinel-client.php';
+
+		$this->assertSame('debug', $config['min_level']);
+	}
+
 }
