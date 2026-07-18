@@ -36,9 +36,12 @@ return [
     | The minimum PSR-3 log level that will be sent to Sentinel: debug, info,
     | notice, warning, error, critical, alert, or emergency.
     |
+    | Falls back to your app's own LOG_LEVEL when not set explicitly, so this
+    | channel behaves the same as your other log channels by default.
+    |
     */
 
-    'min_level' => env('SENTINEL_MIN_LEVEL', 'debug'),
+    'min_level' => env('SENTINEL_MIN_LEVEL', env('LOG_LEVEL', 'debug')),
 
     /*
     |--------------------------------------------------------------------------

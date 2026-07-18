@@ -46,7 +46,8 @@ SENTINEL_INGEST_URL=https://your-sentinel-instance.test/project/{project-uuid}/e
 SENTINEL_ENABLED=true
 
 # Minimum PSR-3 level to ship: debug, info, notice, warning, error,
-# critical, alert, emergency. Defaults to debug (everything).
+# critical, alert, emergency. Falls back to your app's own LOG_LEVEL if
+# unset, then to debug (everything) if that's unset too.
 SENTINEL_MIN_LEVEL=warning
 ```
 
