@@ -1,0 +1,44 @@
+{
+    "name": "drewdan/sentinel-client",
+    "description": "Ships your Laravel application's logs to a Sentinel ingest endpoint.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "logging", "sentinel"],
+    "authors": [
+        {
+            "name": "Andrew Arscott"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/http": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+        "monolog/monolog": "^3.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^10.0|^11.0|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Drewdan\\SentinelClient\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Drewdan\\SentinelClient\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Drewdan\\SentinelClient\\SentinelClientServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
