@@ -39,6 +39,20 @@ class SendHeartbeatCommandTest extends TestCase {
 		);
 	}
 
+	public function testItSendsTheConfiguredHeartbeatInterval(): void {
+		config(
+			[
+				'sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest',
+				'sentinel-client.heartbeat_interval_minutes' => 10,
+			],
+		);
+		Http::fake();
+
+		$this->artisan('sentinel:heartbeat')->assertSuccessful();
+
+		Http::assertSent(fn ($request) => $request['data']['interval_minutes'] === 10);
+	}
+
 	public function testItDoesNothingWhenTheIngestUrlIsNotConfigured(): void {
 		config(['sentinel-client.ingest_url' => null]);
 		Http::fake();

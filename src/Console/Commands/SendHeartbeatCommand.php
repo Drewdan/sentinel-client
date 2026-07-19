@@ -23,6 +23,7 @@ class SendHeartbeatCommand extends Command {
 					'cpu_usage' => $captureMetrics ? SystemMetricsCollector::cpuUsage() : null,
 					...$this->memoryPayload($captureMetrics),
 					...$this->storagePayload($captureMetrics),
+					'interval_minutes' => max(1, (int) config('sentinel-client.heartbeat_interval_minutes', 5)),
 					'occurred_at' => now()->format(DateTimeInterface::ATOM),
 				],
 			],
