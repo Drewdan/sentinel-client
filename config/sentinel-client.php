@@ -128,4 +128,48 @@ return [
 
 	'health_endpoint_path' => env('SENTINEL_HEALTH_ENDPOINT_PATH', '/_sentinel/health'),
 
+	/*
+	|--------------------------------------------------------------------------
+	| Request Tracking
+	|--------------------------------------------------------------------------
+	|
+	| Whether to ship a record of every HTTP request (route, method, status,
+	| response time, caller IP/user) to Sentinel. Opt-in and off by default —
+	| unlike logs/exceptions/jobs, this fires on every single request, so it
+	| should never turn on by accident.
+	|
+	*/
+
+	'track_requests' => env('SENTINEL_TRACK_REQUESTS', false),
+
+	/*
+	|--------------------------------------------------------------------------
+	| Request Ignore Paths
+	|--------------------------------------------------------------------------
+	|
+	| Requests whose path matches any of these Str::is() glob patterns are
+	| never shipped, regardless of sample rate. Add your own noisy routes
+	| here (e.g. 'telescope/*', 'horizon/*', 'nova-api/*').
+	|
+	*/
+
+	'request_ignore_paths' => [
+		'_sentinel/*', // this package's own health endpoint
+		'up',          // Laravel's default health-check route
+	],
+
+	/*
+	|--------------------------------------------------------------------------
+	| Request Sample Rate
+	|--------------------------------------------------------------------------
+	|
+	| The fraction of non-ignored requests to ship, from 0.0 (none) to 1.0
+	| (all). E.g. 0.1 ships roughly 10% of matched requests. Applied after
+	| the ignore-path check above — use ignore paths to exclude specific
+	| routes entirely, and this to thin out the volume of what's left.
+	|
+	*/
+
+	'request_sample_rate' => (float) env('SENTINEL_REQUEST_SAMPLE_RATE', 1.0),
+
 ];

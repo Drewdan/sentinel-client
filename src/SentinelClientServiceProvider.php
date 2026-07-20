@@ -38,6 +38,7 @@ class SentinelClientServiceProvider extends ServiceProvider {
 		);
 
 		Event::subscribe(SentinelJobSubscriber::class);
+		Event::subscribe(SentinelRequestSubscriber::class);
 
 		$this->registerHeartbeatSchedule();
 		$this->registerHealthEndpoint();
