@@ -62,6 +62,11 @@
 	<rule ref="Generic.Commenting.Todo"/>
 	<rule ref="Generic.Commenting.Fixme"/>
 	<rule ref="Generic.Formatting.SpaceAfterCast"/>
+	<rule ref="Generic.Formatting.SpaceAfterNot">
+		<properties>
+			<property name="spacing" value="0"/>
+		</properties>
+	</rule>
 	<rule ref="Generic.Functions.OpeningFunctionBraceKernighanRitchie">
 		<properties>
 			<property name="checkClosures" value="true"/>
@@ -230,6 +235,8 @@
 		<exclude name="SlevomatCodingStandard.TypeHints.DeclareStrictTypes" />
 		<exclude name="SlevomatCodingStandard.TypeHints.ParameterTypeHint" />
 		<exclude name="SlevomatCodingStandard.TypeHints.PropertyTypeHint" />
+		<!-- Typed class constants require PHP 8.3, but composer.json supports 8.2 -->
+		<exclude name="SlevomatCodingStandard.TypeHints.ClassConstantTypeHint" />
 
 		<!-- Up for debate -->
 		<exclude name="SlevomatCodingStandard.ControlStructures.DisallowShortTernaryOperator" />

@@ -113,7 +113,7 @@ class SentinelLogHandlerTest extends TestCase {
 		Log::channel('sentinel')->error($exception->getMessage(), ['exception' => $exception, 'order_id' => 42]);
 
 		Http::assertSent(
-			fn ($request) => ! isset($request['data']['context']['exception'])
+			fn ($request) => !isset($request['data']['context']['exception'])
 				&& $request['data']['context']['order_id'] === 42,
 		);
 	}
