@@ -82,7 +82,7 @@ class SystemMetricsCollector {
 		try {
 			$path ??= base_path();
 
-			if (! is_dir($path)) {
+			if (!is_dir($path)) {
 				return null;
 			}
 
@@ -123,7 +123,7 @@ class SystemMetricsCollector {
 		// MemAvailable was only added in kernel 3.14 (2014) — on hosts old
 		// enough to predate it, we'd rather report nothing than guess from
 		// MemFree alone (which ignores reclaimable cache/buffers).
-		if (! isset($meminfo['MemTotal'], $meminfo['MemAvailable'])) {
+		if (!isset($meminfo['MemTotal'], $meminfo['MemAvailable'])) {
 			return null;
 		}
 
@@ -163,8 +163,8 @@ class SystemMetricsCollector {
 	 */
 	private static function parseMacVmStat(string $vmStat, int $totalBytes): ?array {
 		if (
-			! preg_match('/page size of (\d+) bytes/', $vmStat, $pageSizeMatch)
-			|| ! preg_match('/Pages free:\s+(\d+)\./', $vmStat, $freeMatch)
+			!preg_match('/page size of (\d+) bytes/', $vmStat, $pageSizeMatch)
+			|| !preg_match('/Pages free:\s+(\d+)\./', $vmStat, $freeMatch)
 		) {
 			return null;
 		}
@@ -204,8 +204,8 @@ class SystemMetricsCollector {
 	 */
 	private static function parseWindowsMemory(string $output): ?array {
 		if (
-			! preg_match('/FreePhysicalMemory=(\d+)/', $output, $freeMatch)
-			|| ! preg_match('/TotalVisibleMemorySize=(\d+)/', $output, $totalMatch)
+			!preg_match('/FreePhysicalMemory=(\d+)/', $output, $freeMatch)
+			|| !preg_match('/TotalVisibleMemorySize=(\d+)/', $output, $totalMatch)
 		) {
 			return null;
 		}
@@ -222,13 +222,13 @@ class SystemMetricsCollector {
 	}
 
 	private static function shellExecAvailable(): bool {
-		if (! function_exists('shell_exec')) {
+		if (!function_exists('shell_exec')) {
 			return false;
 		}
 
 		$disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
 
-		return ! in_array('shell_exec', $disabled, true);
+		return !in_array('shell_exec', $disabled, true);
 	}
 
 }

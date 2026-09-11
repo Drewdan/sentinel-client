@@ -45,7 +45,7 @@ class SentinelClientServiceProvider extends ServiceProvider {
 	}
 
 	private function registerHeartbeatSchedule(): void {
-		if (! config('sentinel-client.heartbeat_enabled', true)) {
+		if (!config('sentinel-client.heartbeat_enabled', true)) {
 			return;
 		}
 
@@ -62,7 +62,7 @@ class SentinelClientServiceProvider extends ServiceProvider {
 	}
 
 	private function registerHealthEndpoint(): void {
-		if (! config('sentinel-client.health_endpoint_enabled', true)) {
+		if (!config('sentinel-client.health_endpoint_enabled', true)) {
 			return;
 		}
 

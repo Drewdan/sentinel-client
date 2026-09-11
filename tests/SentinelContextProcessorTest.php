@@ -56,7 +56,7 @@ class SentinelContextProcessorTest extends TestCase {
 
 		Log::channel('sentinel')->info('No user context');
 
-		Http::assertSent(fn ($sent) => ! array_key_exists('user', $sent['data']['context'] ?? []));
+		Http::assertSent(fn ($sent) => !array_key_exists('user', $sent['data']['context'] ?? []));
 	}
 
 	private function fakeUser(): Authenticatable {

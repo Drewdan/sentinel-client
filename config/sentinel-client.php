@@ -57,6 +57,33 @@ return [
 
 	/*
 	|--------------------------------------------------------------------------
+	| Connect Timeout
+	|--------------------------------------------------------------------------
+	|
+	| Seconds (fractional allowed, e.g. 0.25 for 250ms) to wait for the TCP
+	| connection to Sentinel to establish. Kept separate from and much
+	| shorter than `timeout` above, since a network-level outage hangs at
+	| the connect stage rather than the response.
+	|
+	*/
+
+	'connect_timeout' => env('SENTINEL_CONNECT_TIMEOUT', 0.25),
+
+	/*
+	|--------------------------------------------------------------------------
+	| Circuit Breaker Cooldown
+	|--------------------------------------------------------------------------
+	|
+	| Seconds to stop attempting ingest sends entirely after one fails, so a
+	| known outage fails fast instead of every call site independently
+	| waiting out a connection timeout.
+	|
+	*/
+
+	'circuit_breaker_cooldown' => env('SENTINEL_CIRCUIT_BREAKER_COOLDOWN', 30),
+
+	/*
+	|--------------------------------------------------------------------------
 	| Code Snippet Capture
 	|--------------------------------------------------------------------------
 	|
@@ -154,8 +181,10 @@ return [
 	*/
 
 	'request_ignore_paths' => [
-		'_sentinel/*', // this package's own health endpoint
-		'up',          // Laravel's default health-check route
+		// this package's own health endpoint
+		'_sentinel/*',
+		// Laravel's default health-check route
+		'up',
 	],
 
 	/*

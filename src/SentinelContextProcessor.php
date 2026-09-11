@@ -13,13 +13,13 @@ use Monolog\LogRecord;
 class SentinelContextProcessor {
 
 	private function requestContext(): ?array {
-		if (! app()->bound('request')) {
+		if (!app()->bound('request')) {
 			return null;
 		}
 
 		$request = request();
 
-		if (! $request) {
+		if (!$request) {
 			return null;
 		}
 
@@ -35,7 +35,7 @@ class SentinelContextProcessor {
 	}
 
 	private function userContext(): ?array {
-		if (! Auth::hasUser()) {
+		if (!Auth::hasUser()) {
 			return null;
 		}
 

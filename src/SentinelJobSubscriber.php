@@ -44,7 +44,7 @@ class SentinelJobSubscriber {
 
 	public function handleJobFailed(JobFailed $event): void {
 		try {
-			if (! in_array(config('sentinel-client.track_jobs', 'failed'), ['failed', 'all'], true)) {
+			if (!in_array(config('sentinel-client.track_jobs', 'failed'), ['failed', 'all'], true)) {
 				unset($this->startedAt[$event->job->getJobId()]);
 
 				return;

@@ -15,7 +15,7 @@ class SourceSnippetExtractor {
 	 */
 	public static function around(string $file, int $line, int $padding = 5): ?array {
 		try {
-			if ($file === '' || ! is_readable($file)) {
+			if ($file === '' || !is_readable($file)) {
 				return null;
 			}
 

@@ -22,7 +22,7 @@ class SentinelRequestSubscriber {
 
 	public function handleRequestHandled(RequestHandled $event): void {
 		try {
-			if (! config('sentinel-client.track_requests', false)) {
+			if (!config('sentinel-client.track_requests', false)) {
 				return;
 			}
 

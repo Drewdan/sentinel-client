@@ -3,7 +3,6 @@
 namespace Drewdan\SentinelClient\Tests;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Route;
 
 class SentinelRequestSubscriberTest extends TestCase {
 
