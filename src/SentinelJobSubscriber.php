@@ -5,6 +5,7 @@ namespace Drewdan\SentinelClient;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Events\Dispatcher;
+use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -30,13 +31,35 @@ class SentinelJobSubscriber {
 
 	public function handleJobProcessed(JobProcessed $event): void {
 		try {
-			if (config('sentinel-client.track_jobs', 'failed') !== 'all') {
+			$trackJobs = config('sentinel-client.track_jobs', 'failed');
+
+			// A job released by middleware (e.g. WithoutOverlapping) never throws, so
+			// this is the only trace of it and the reason it later runs out of attempts.
+			if ($event->job->isReleased() && $trackJobs !== 'none') {
+				IngestClient::send($this->buildPayload($event->job, 'released'));
+
+				return;
+			}
+
+			if ($trackJobs !== 'all') {
 				unset($this->startedAt[$event->job->getJobId()]);
 
 				return;
 			}
 
 			IngestClient::send($this->buildPayload($event->job, 'completed'));
+		} catch (\Throwable $e) {
+			unset($e);
+		}
+	}
+
+	public function handleJobExceptionOccurred(JobExceptionOccurred $event): void {
+		try {
+			if (!in_array(config('sentinel-client.track_jobs', 'failed'), ['failed', 'all'], true)) {
+				return;
+			}
+
+			IngestClient::send($this->buildPayload($event->job, 'attempt_failed', $event->exception));
 		} catch (\Throwable $e) {
 			unset($e);
 		}
@@ -64,13 +87,18 @@ class SentinelJobSubscriber {
 		// fresh instance per event and lose that state.
 		$events->listen(JobProcessing::class, [$this, 'handleJobProcessing']);
 		$events->listen(JobProcessed::class, [$this, 'handleJobProcessed']);
+		$events->listen(JobExceptionOccurred::class, [$this, 'handleJobExceptionOccurred']);
 		$events->listen(JobFailed::class, [$this, 'handleJobFailed']);
 	}
 
 	private function buildPayload(Job $job, string $status, ?\Throwable $exception = null): array {
 		$jobId = $job->getJobId();
 		$startedAt = $this->startedAt[$jobId] ?? null;
-		unset($this->startedAt[$jobId]);
+
+		// Kept for attempt_failed: JobFailed or JobProcessed follows and needs the start time.
+		if ($status !== 'attempt_failed') {
+			unset($this->startedAt[$jobId]);
+		}
 
 		$data = [
 			'status' => $status,
@@ -79,7 +107,13 @@ class SentinelJobSubscriber {
 			'queue' => $job->getQueue(),
 			'duration_ms' => $startedAt !== null ? (int) round((microtime(true) - $startedAt) * 1000) : null,
 			'exception' => $exception ? $this->buildException($exception) : null,
-			'context' => array_filter(['attempts' => $job->attempts()]),
+			'context' => array_filter(
+				[
+					'attempts' => $job->attempts(),
+					'max_tries' => $job->maxTries(),
+					'uuid' => $job->uuid(),
+				],
+			),
 			'occurred_at' => now()->format(DateTimeInterface::ATOM),
 		];
 

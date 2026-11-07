@@ -118,6 +118,11 @@ return [
 	|   - "all": ship every job execution, successful or not, with its duration.
 	|   - "none": don't track job executions at all.
 	|
+	| "failed" and "all" also ship every attempt that threw (status
+	| "attempt_failed") and every job released back onto the queue, e.g. by
+	| WithoutOverlapping (status "released"), so you can see why a job later
+	| fails with MaxAttemptsExceededException.
+	|
 	*/
 
 	'track_jobs' => env('SENTINEL_TRACK_JOBS', 'failed'),
