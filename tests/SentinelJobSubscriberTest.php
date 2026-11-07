@@ -4,6 +4,7 @@ namespace Drewdan\SentinelClient\Tests;
 
 use Drewdan\SentinelClient\Tests\Fixtures\FailingTestJob;
 use Drewdan\SentinelClient\Tests\Fixtures\PassingTestJob;
+use Drewdan\SentinelClient\Tests\Fixtures\ReleasingTestJob;
 use Illuminate\Support\Facades\Http;
 
 class SentinelJobSubscriberTest extends TestCase {
@@ -72,6 +73,47 @@ class SentinelJobSubscriberTest extends TestCase {
 		Http::fake();
 
 		$this->dispatchExpectingFailure(new FailingTestJob);
+
+		Http::assertNothingSent();
+	}
+
+	public function testItShipsEachAttemptThatThrewAlongsideTheFinalFailure(): void {
+		config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
+		Http::fake();
+
+		$this->dispatchExpectingFailure(new FailingTestJob);
+
+		Http::assertSent(
+			fn ($request) => $request['data']['status'] === 'attempt_failed'
+				&& $request['data']['exception']['message'] === 'The job blew up'
+				&& isset($request['data']['context']['uuid']),
+		);
+		Http::assertSent(fn ($request) => $request['data']['status'] === 'failed');
+	}
+
+	public function testItShipsJobsReleasedBackOntoTheQueue(): void {
+		config(['sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest']);
+		Http::fake();
+
+		dispatch(new ReleasingTestJob)->onConnection('sync');
+
+		Http::assertSent(
+			fn ($request) => $request['data']['status'] === 'released'
+				&& $request['data']['class'] === ReleasingTestJob::class
+				&& $request['data']['exception'] === null,
+		);
+	}
+
+	public function testItShipsNoAttemptsOrReleasesWhenTrackingNone(): void {
+		config(
+			[
+				'sentinel-client.ingest_url' => 'https://sentinel.test/project/abc/environment/def/ingest',
+				'sentinel-client.track_jobs' => 'none',
+			],
+		);
+		Http::fake();
+
+		dispatch(new ReleasingTestJob)->onConnection('sync');
 
 		Http::assertNothingSent();
 	}
